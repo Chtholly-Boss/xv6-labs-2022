@@ -299,6 +299,9 @@ fork(void)
   // copy saved user registers.
   *(np->trapframe) = *(p->trapframe);
 
+  // TODO: Copy mask from parent to child
+  np->mask = p->mask;
+
   // Cause fork to return 0 in the child.
   np->trapframe->a0 = 0;
 
@@ -680,4 +683,17 @@ procdump(void)
     printf("%d %s %s", p->pid, state, p->name);
     printf("\n");
   }
+}
+
+int unused_procs(void) {
+  // Find the total number of unused processes
+  int n = 0;
+  for (int i = 0; i < NPROC; i++) {
+    acquire(&proc[i].lock);
+    if (proc[i].state != UNUSED) {
+      n++;
+    }
+    release(&proc[i].lock);
+  }
+  return n;
 }

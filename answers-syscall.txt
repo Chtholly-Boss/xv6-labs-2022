@@ -1,0 +1,6 @@
+`usertrap()` of `kernel/trap.c:67` call `syscall()`
+`a7=0x7`, which is the syscall number of `exec`
+user mode
+`lw a3,0(zero)`, a3
+because addr 0 is not mapped, `scause=0xd` indicates this.
+initcode, pid=1
