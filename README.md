@@ -6,4 +6,5 @@ Checkout to each branch and run `make grade` to get the score infos.
 Follows are the implementations of each lab, splitted in separated files.
 
 * [x] [util](./util.md)
-* [ ] [syscall]()
+* [x] [syscall](./syscall.md)
+* [ ] [page tables](./pagetable.md)
