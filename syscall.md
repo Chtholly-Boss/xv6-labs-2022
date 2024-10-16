@@ -208,3 +208,6 @@ sys_sysinfo(void)
 ```
 
 The usage of `copyout` can be found at `sys_fstat()`
+
+## Test
+run `make grade` to test your code. Don't forget to add a `time.txt` to get a full score.
