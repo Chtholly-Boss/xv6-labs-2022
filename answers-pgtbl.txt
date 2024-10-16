@@ -1,0 +1,8 @@
+fork can be speedup because each time we fork to get a child, we should copy so many things.
+If we store them to the syscall page, the time consumed can be decreased.
+
+page0 is the text containing codes and global datas, etc.
+page1 is the guard page.
+page2 is the stack page.
+the process couldn't access the guard page,otherwise it will cause a segmentation fault.
+the third to last page contain the heap.

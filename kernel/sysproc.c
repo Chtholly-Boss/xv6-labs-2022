@@ -75,6 +75,34 @@ int
 sys_pgaccess(void)
 {
   // lab pgtbl: your code here.
+  struct proc *p = myproc();
+  // * Declare the variable to hold the parameters
+  uint64 usrePageVa; // the starting virtual address of the first user page to check
+  int pageNum; // the number of pages to check
+  uint64 userAbits; // a user address to a buffer to store the results into a bitmask
+  // * Parse the parameters
+  argaddr(0,&usrePageVa);
+  argint(1,&pageNum);
+  argaddr(2,&userAbits);
+  if(pageNum >= 512*512*512){
+    printf("Ask to scan too many pages!!!\n");
+    return -1;
+  }
+  uint64 bitmasks = 0;
+  for(int i=0; i < pageNum; i++){
+    pte_t *pte = walk(p->pagetable,usrePageVa+i*PGSIZE,0);
+    if(*pte & PTE_V){
+      if(*pte & PTE_A){ // 1L << 6 according to the spec
+        bitmasks |= 1 << i;
+        *pte &= ~PTE_A;
+      }
+    }
+    
+  }
+  // * Copy out the usesrbits
+  if(copyout(p->pagetable,userAbits,(char *)(&bitmasks),sizeof(bitmasks))){
+    return -1;
+  }
   return 0;
 }
 #endif
