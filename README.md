@@ -8,4 +8,10 @@ Follows are the implementations of each lab, splitted in separated files.
 * [x] [util](./util.md)
 * [x] [syscall](./syscall.md)
 * [x] [page tables](./pagetable.md)
+* [x] [traps](./traps.md)
+* [ ] [copy On Write]
+* [ ] [multithreading]
 * [x] [net](./net.md)
+* [ ] [lock]
+* [ ] [file system]
+* [ ] [mmap]
