@@ -50,7 +50,54 @@ usertrap(void)
   // save user program counter.
   p->trapframe->epc = r_sepc();
   
-  if(r_scause() == 8){
+  if(r_scause() == 15){
+    // * a store page-fault
+    if(killed(p)){
+      exit(1);
+    }
+
+    pte_t *pte;
+    uint64 addr = PGROUNDDOWN(r_stval());
+    if(addr >= MAXVA){
+      printf("usertrap: Outbound the MAXVA\n");
+      setkilled(p);
+    } else if((pte = walk(p->pagetable,addr,0)) == 0){
+      printf("usertrap: pte should exist\n");
+      setkilled(p);
+    } else if((*pte & PTE_V) == 0){
+      printf("usertrap: page not present\n");
+      setkilled(p);
+    } else if((*pte & PTE_COW) == 0){
+      printf("usertrap: Not a cow pagefault\n");
+      setkilled(p);
+    } else {
+      char* mem;
+      uint flags;
+      uint64 pa;
+      pa = PTE2PA(*pte);
+      if((mem = kalloc()) == 0){
+        printf("usertrap: No more memory\n");
+        setkilled(p);
+      } else {
+        memmove(mem,(char*)pa,PGSIZE);
+
+        flags = PTE_FLAGS(*pte);
+        flags |= PTE_W; // * set the PTE_W
+        flags &= ~PTE_COW; // * unset the PTE_COW
+        // * remap to a new page
+        uvmunmap(p->pagetable,addr,1,1);
+        if(mappages(p->pagetable,addr,PGSIZE,(uint64)mem,flags) != 0){
+          panic("usertrap: map failed");
+          kfree(mem);
+          setkilled(p);
+        }
+      }
+    }
+  } else if(r_scause() == 13){
+    // a load page fault
+    printf("usertrap: load page fault\n");
+    setkilled(p);
+  } else if(r_scause() == 8){
     // system call
 
     if(killed(p))

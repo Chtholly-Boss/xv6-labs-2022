@@ -343,6 +343,12 @@ typedef uint64 *pagetable_t; // 512 PTEs
 #define PTE_W (1L << 2)
 #define PTE_X (1L << 3)
 #define PTE_U (1L << 4) // user can access
+// a record for each PTE that indicates whether it is a cow mapping
+// in risc-v PTE, reserved software bits in the PTE are [9:8]
+// add a mark to riscv.h
+#define PTE_COW (1L << 8) // * whether is a cow mapping
+// add a macro to index the refCnts list
+#define REF_INDEX(pa) (PGROUNDDOWN(pa)- KERNBASE)/PGSIZE
 
 // shift a physical address to the right place for a PTE.
 #define PA2PTE(pa) ((((uint64)pa) >> 12) << 10)

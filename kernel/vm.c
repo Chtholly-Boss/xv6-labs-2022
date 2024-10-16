@@ -15,6 +15,7 @@ extern char etext[];  // kernel.ld sets this to end of kernel code.
 
 extern char trampoline[]; // trampoline.S
 
+extern int refCnts[]; // kalloc.c maintains a reference count for each page
 // Make a direct-map page table for the kernel.
 pagetable_t
 kvmmake(void)
@@ -308,8 +309,6 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
   pte_t *pte;
   uint64 pa, i;
   uint flags;
-  char *mem;
-
   for(i = 0; i < sz; i += PGSIZE){
     if((pte = walk(old, i, 0)) == 0)
       panic("uvmcopy: pte should exist");
@@ -317,19 +316,24 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
       panic("uvmcopy: page not present");
     pa = PTE2PA(*pte);
     flags = PTE_FLAGS(*pte);
-    if((mem = kalloc()) == 0)
-      goto err;
-    memmove(mem, (char*)pa, PGSIZE);
-    if(mappages(new, i, PGSIZE, (uint64)mem, flags) != 0){
-      kfree(mem);
+    if(flags & PTE_W) {
+      // * set cow 
+      flags &= ~ PTE_W;
+      flags |= PTE_COW;
+      *pte &= ~PTE_W;
+      *pte |= PTE_COW;
+    }
+    // Simply map, not allocate new memory
+    if(mappages(new, i, PGSIZE, pa, flags) != 0){ 
       goto err;
     }
-  }
+    // * increment ref count 
+    refCnts[REF_INDEX(pa)] += 1;
+  } 
   return 0;
-
- err:
+err:
   uvmunmap(new, 0, i / PGSIZE, 1);
-  return -1;
+  return -1; 
 }
 
 // mark a PTE invalid for user access.
@@ -351,13 +355,39 @@ uvmclear(pagetable_t pagetable, uint64 va)
 int
 copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
 {
-  uint64 n, va0, pa0;
-
+    uint64 n, va0, pa0;
+  pte_t *pte;
+  uint64 flags;
   while(len > 0){
     va0 = PGROUNDDOWN(dstva);
     pa0 = walkaddr(pagetable, va0);
     if(pa0 == 0)
       return -1;
+    if((pte = walk(pagetable,va0,0)) == 0){
+      panic("copyout: pte should exist");
+    }
+    flags = PTE_FLAGS(*pte);
+    if((*pte & PTE_V) == 0){
+      panic("copyout: page not present");
+    }
+    if(flags & PTE_COW){
+      char* mem;
+      if((mem = kalloc()) == 0){
+        // ! no more free space,kill p
+        panic("copyout: No more memory!");
+      } else {
+        memmove(mem,(char*)pa0,PGSIZE);
+        flags |= PTE_W; // * set the PTE_W
+        flags &= ~PTE_COW; // * unset the PTE_COW
+        // * remap to a new page
+        uvmunmap(pagetable,PGROUNDDOWN(va0),1,1);
+        if(mappages(pagetable,PGROUNDDOWN(va0),PGSIZE,(uint64)mem,flags) != 0){
+          panic("copyout: map failed");
+          kfree(mem);
+        }
+        pa0 = (uint64)mem;
+      }
+    }
     n = PGSIZE - (dstva - va0);
     if(n > len)
       n = len;
