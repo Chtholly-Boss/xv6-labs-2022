@@ -1,6 +1,6 @@
 #!/bin/bash
 
-branches=(util syscall)
+branches=(util syscall pgtbl traps cow thread net lock fs mmap)
 
 for branch in "${branches[@]}"; do
     (
