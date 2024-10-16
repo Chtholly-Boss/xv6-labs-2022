@@ -107,7 +107,7 @@ sys_sysinfo(void)
   // Get infos
   struct sysinfo info;
   info.freemem = kfree_space(); // numOfElem in freelist * PGSIZE
-  info.nproc = unused_procs(); // Traverse the proc list
+  info.nproc = used_procs(); // Traverse the proc list
   // Get User pointer to sysinfo
   struct proc *p = myproc();
   uint64 usrInfo;

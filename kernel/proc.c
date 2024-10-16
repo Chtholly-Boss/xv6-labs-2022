@@ -685,7 +685,7 @@ procdump(void)
   }
 }
 
-int unused_procs(void) {
+int used_procs(void) {
   // Find the total number of unused processes
   int n = 0;
   for (int i = 0; i < NPROC; i++) {
