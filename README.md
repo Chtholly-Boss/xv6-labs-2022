@@ -10,8 +10,8 @@ Follows are the implementations of each lab, splitted in separated files.
 * [x] [page tables](./pagetable.md)
 * [x] [traps](./traps.md)
 * [x] [copy on write](./cow.md)
-* [ ] [multithreading]
+* [ ] [multithreading](./thread.md)
 * [x] [net](./net.md)
-* [ ] [lock]
-* [ ] [file system]
-* [ ] [mmap]
+* [ ] [lock](./lock.md)
+* [x] [file system](./fs.md)
+* [ ] [mmap](./mmap.md)
