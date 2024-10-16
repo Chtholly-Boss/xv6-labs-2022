@@ -15,6 +15,8 @@ sub entry {
     print " ret\n";
 }
 	
+entry("sigalarm");
+entry("sigreturn");
 entry("fork");
 entry("exit");
 entry("wait");

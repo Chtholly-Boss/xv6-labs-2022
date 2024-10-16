@@ -1,0 +1,14 @@
+for syscalls, arguments are put in a1-a7
+for common functions, arguments are stored on stack
+
+the call to f and g is inlined by the compiler, `li a1,12` is the result of the calls.
+
+642 <printf>
+
+the pc of `jalr` plus 4
+
+Hello, World
+i = 0x726c6400
+needn't to change, because the number will be convert to big-endian in the memory
+
+the value in register a2
