@@ -5,6 +5,11 @@
 #include "spinlock.h"
 #include "proc.h"
 #include "defs.h"
+// * new headers
+#include "fcntl.h"
+#include "sleeplock.h"
+#include "fs.h"
+#include "file.h"
 
 struct cpu cpus[NCPU];
 
@@ -288,6 +293,18 @@ fork(void)
     return -1;
   }
 
+  // * copy vmas 
+  struct vma *v;
+  for(int i = 0; i < VMA_NUM; i++){
+    if(p->vmas[i].file){
+      v = &p->vmas[i];
+      np->vmas[i] = *v;
+      if((mappages(np->pagetable,v->addr,v->length,0,PTE_U | PTE_M)) != 0){
+        printf("fork: mappage failed\n");
+      }
+      filedup(np->vmas[i].file);
+    }
+  }
   // Copy user memory from parent to child.
   if(uvmcopy(p->pagetable, np->pagetable, p->sz) < 0){
     freeproc(np);
@@ -359,7 +376,44 @@ exit(int status)
       p->ofile[fd] = 0;
     }
   }
-
+  // - unmap all vmas
+  struct vma *v;
+  for(int i = 0; i < VMA_NUM; i++){
+    if(p->vmas[i].file){
+      v = &p->vmas[i];
+      pte_t *pte;
+      for(int j = 0; j < v->length; j += PGSIZE){
+        pte = walk(p->pagetable,v->addr+j,0);
+        if((*pte) != 0){
+          if((v->flag & MAP_SHARED) && (*pte & PTE_W)){
+            int r = 0;
+            // ! map shared, write to the file
+            int max = ((MAXOPBLOCKS-1-1-2) / 2) * BSIZE;
+            int off = 0;
+            while(off < PGSIZE){
+              int n1 = PGSIZE - off;
+              if(n1 > max)
+                n1 = max;
+              begin_op();
+              ilock(v->file->ip);
+              r = writei(v->file->ip, 1, v->addr+j+off, j+off, n1);
+              iunlock(v->file->ip);
+              end_op();
+              if(r != n1){
+                // error from writei
+                printf("munmap: error on writing to file\n");
+                break;
+              }
+              off += r;
+            }
+          }
+          uvmunmap(p->pagetable,v->addr+j,1,(*pte & (PTE_R | PTE_W)));
+        }
+      }
+      fileclose(v->file);
+      v->file = 0;
+    }
+  }
   begin_op();
   iput(p->cwd);
   end_op();
@@ -680,4 +734,20 @@ procdump(void)
     printf("%d %s %s", p->pid, state, p->name);
     printf("\n");
   }
+}
+
+/*
+ * Find a vma that contains the virtual address va
+ */
+struct vma* find_vma(uint64 va)
+{
+  struct proc *p = myproc();
+  for(int i = 0; i < VMA_NUM; i++){
+    if(p->vmas[i].file){
+      if(va >= p->vmas[i].addr && va < (p->vmas[i].addr + p->vmas[i].length)){
+        return &p->vmas[i];
+      }
+    }
+  }
+  return 0;
 }

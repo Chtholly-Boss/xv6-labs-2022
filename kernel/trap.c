@@ -5,6 +5,11 @@
 #include "spinlock.h"
 #include "proc.h"
 #include "defs.h"
+// * New header
+#include "sleeplock.h"
+#include "fs.h"
+#include "file.h"
+#include "fcntl.h"
 
 struct spinlock tickslock;
 uint ticks;
@@ -50,7 +55,65 @@ usertrap(void)
   // save user program counter.
   p->trapframe->epc = r_sepc();
   
-  if(r_scause() == 8){
+  if(r_scause() == 13) {
+    if(killed(p)){
+      exit(1);
+    }
+
+    pte_t *pte;
+    uint64 addr = PGROUNDDOWN(r_stval());
+    if (
+        (addr >= MAXVA) || 
+        (pte = walk(p->pagetable,addr,0)) == 0 ||
+        (*pte & PTE_V) == 0 || 
+        (*pte & PTE_M) == 0
+      ){
+      setkilled(p);
+    } else {
+      // ! load page fault caused by mmap
+      struct vma* area = find_vma(addr);
+      if(area == 0){
+        printf("usertrap: vma should exist\n");
+        setkilled(p);
+      } else {
+        char* mem;
+        if((mem = kalloc()) == 0){
+          printf("usertrap: No more memory\n");
+          setkilled(p);
+        } else {
+          memset(mem, 0, PGSIZE);
+          struct file* f = area->file;
+          if (f) {
+            int r = 0;
+
+            ilock(f->ip);
+            if((r = readi(f->ip, 0, (uint64)mem, addr-area->addr, PGSIZE)) < 0){
+              panic("usertrap: readi failed");
+            }
+            // printf("r: %d\n", r);
+            iunlock(f->ip);
+
+            uint flags = PTE_FLAGS(*pte);
+            if (area->permission & PROT_WRITE)
+              flags |= PTE_W;
+            if (area->permission & PROT_READ)
+              flags |= PTE_R;
+            if (area->permission & PROT_EXEC)
+              flags |= PTE_X;
+
+            // map the newly allocated page to addr
+            uvmunmap(p->pagetable,addr,1,0);
+            if(mappages(p->pagetable,addr,PGSIZE,(uint64)mem,flags) != 0){
+              panic("usertrap: map failed");
+              kfree(mem);
+              setkilled(p);
+            }
+            
+          }
+        }
+      }
+    }
+  } else if(r_scause() == 8){
     // system call
 
     if(killed(p))
