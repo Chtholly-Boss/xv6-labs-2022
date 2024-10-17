@@ -12,6 +12,6 @@ Follows are the implementations of each lab, splitted in separated files.
 * [x] [copy on write](./cow.md)
 * [x] [multithreading](./thread.md)
 * [x] [net](./net.md)
-* [ ] [lock](./lock.md)
+* [x] [lock](./lock.md)
 * [x] [file system](./fs.md)
 * [ ] [mmap](./mmap.md)
