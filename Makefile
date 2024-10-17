@@ -30,6 +30,7 @@ test:
 		echo "Error: Branch name not provided"; \
 		exit 1; \
 	fi
+	@git checkout main > /dev/null
 
 # 定义一个规则来清理所有分支
 .PHONY: clean
@@ -38,3 +39,4 @@ clean:
 		git checkout "$$branch" > /dev/null && \
 		make clean > /dev/null; \
 	done
+	@git checkout main > /dev/null
