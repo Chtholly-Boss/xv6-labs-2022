@@ -173,9 +173,26 @@ bget(uint dev, uint blockno)
     b = b->next;
   }
   // ! not in the bucket
+  // !!! You should find in itself first
+  // !!! Otherwise, when two cpu request for the same block, the bucket will have 
+  // !!! different blocks for the same block node
+  b = h->next;
+  while (b != h)  
+  {
+    if (b->refcnt == 0) {
+        b->dev = dev;
+        b->blockno = blockno;
+        b->valid = 0;
+        b->refcnt = 1;
+        goto getBuf;
+    }
+    b = b->next;
+  }
   release(&bcache.buckets[idx].lock);
   // - check bucket by bucket to find a unused
   for(int i = 0; i < BUCKETS; i++){
+    if (i == idx)
+      continue;
     acquire(&bcache.buckets[i].lock);
     h = &bcache.buckets[i].head;
     b = h->next;
